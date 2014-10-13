@@ -6,6 +6,8 @@ import sys
 
 kernel_json = {"argv":[sys.executable,"-m","test_kernel", "-f", "{connection_file}"],
  "display_name":"Test",
+ "language":"test",
+ "codemirror_mode":"shell"
 }
 
 class install_with_kernelspec(install):
@@ -16,7 +18,7 @@ class install_with_kernelspec(install):
         # Now write the kernelspec
         from IPython.kernel.kernelspec import KernelSpecManager
         from IPython.utils.path import ensure_dir_exists
-        destdir = os.path.join(KernelSpecManager().user_kernel_dir, 'bash')
+        destdir = os.path.join(KernelSpecManager().user_kernel_dir, 'test')
         ensure_dir_exists(destdir)
         with open(os.path.join(destdir, 'kernel.json'), 'w') as f:
             json.dump(kernel_json, f, sort_keys=True)
@@ -33,14 +35,14 @@ if svem_flag in sys.argv:
 
 setup(name='test_kernel',
       version='0.2',
-      description='A test kernel for IPython',
+      description='A bash kernel for IPython',
       long_description=readme,
-      author='Steven Silvester',
-      author_email='steven.silvester@ieee.org',
-      url='https://github.com/blink1073/test_kernel',
+      author='Thomas Kluyver',
+      author_email='thomas@kluyver.me.uk',
+      url='https://github.com/takluyver/bash_kernel',
       py_modules=['test_kernel'],
       cmdclass={'install': install_with_kernelspec},
-      classifiers=[
+      classifiers = [
           'Framework :: IPython',
           'License :: OSI Approved :: BSD License',
           'Programming Language :: Python :: 3',

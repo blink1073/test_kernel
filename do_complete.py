@@ -34,7 +34,7 @@ def _complete_path(path=None):
     """Perform completion of filesystem path.
     http://stackoverflow.com/questions/5637124/tab-completion-in-pythons-raw-input
     """
-    if not path:
+    if not path or path == '.':
         return _listdir('.')
     dirname, rest = os.path.split(path)
     tmp = dirname if dirname else '.'
@@ -117,7 +117,7 @@ class Parser(object):
             info['help_col'] = col
             info['help_pos'] = end
 
-        info['complete_obj'] = obj
+        info['obj'] = obj
         info['full_obj'] = full_obj
 
         return info
@@ -178,10 +178,13 @@ class Parser(object):
 
         info['rest'] = code[info['index']:].strip()
 
-        lines = info['rest'].splitlines()
-        info['args'] = lines[0].strip()
-        info['code'] = '\n'.join(lines[1:])
-
+        if info['rest']:
+            lines = info['rest'].splitlines()
+            info['args'] = lines[0].strip()
+            info['code'] = '\n'.join(lines[1:])
+        else:
+            info['args'] = ''
+            info['code'] = ''
         return info
 
 
@@ -194,7 +197,7 @@ def test_parser():
                magic_suffixes)
 
     info = p.parse_code('import nump')
-    assert info['help_obj'] == info['complete_obj'] == 'nump'
+    assert info['help_obj'] == info['obj'] == 'nump'
 
     assert p.parse_code('%python impor', 0, 10)['magic']['name'] == 'python'
     assert p.parse_code('oct(a,')['help_obj'] == 'oct'
@@ -202,10 +205,13 @@ def test_parser():
 
     info = p.parse_code('%help %lsmagic', 0, 10)
     assert info['help_obj'] == '%lsmagic'
-    assert info['complete_obj'] == '%lsm'
+    assert info['obj'] == '%lsm'
 
     info = p.parse_code('%%python\nprint("hello, world!",')
     assert info['help_obj'] == 'print'
+
+    info = p.parse_code('%lsmagic')
+    assert info['help_obj'] == '%lsmagic'
 
 
 def test_scheme_parser():
