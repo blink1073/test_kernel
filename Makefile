@@ -26,5 +26,5 @@ release:
 test:
 	make clean
 	python setup.py install
-	cd ~; ipython qtconsole --kernel=test
+	cd ~; ipython qtconsole --kernel=test_kernel
 	make clean
