@@ -50,6 +50,7 @@ class Parser(object):
                  magic_suffixes):
         self.identifier_regex = identifier_regex
         self.func_call_regex = function_call_regex
+        self.path_regex = re.compile(r'([a-zA-Z/\.~].*\Z)')
         self.magic_prefixes = magic_prefixes
         self.magic_suffixes = magic_suffixes
         self._default_regex = r'[^\d\W]\w*'
@@ -114,6 +115,12 @@ class Parser(object):
 
         info['obj'] = obj
         info['full_obj'] = full_obj
+
+        path_obj = re.search(self.path_regex, line)
+        if path_obj:
+            info['path_obj'] = path_obj.group()
+        else:
+            info['path_obj'] = obj
 
         return info
 
@@ -218,16 +225,22 @@ class TestKernel(Kernel):
     def do_complete(self, code, cursor_pos):
 
         # TODO: do something here
-        start = 0
-        end = 0
         info = self.parser.parse_code(code)
-        matches = _complete_path(info['complete_obj'])
-        print(info['complete_obj'])
-        stream_content = {'name': 'stdout', 'text': info['complete_obj']}
-        self.send_response(self.iopub_socket, 'stream', stream_content)
+        #matches = _complete_path(info['complete_obj'])
+        matches = _complete_path(info['path_obj'])
+        if matches:
+            while not matches[0].startswith(info['mid']):
+                info['start'] += 1
+                info['pre'] += info['mid'][0]
+                info['mid'] = info['mid'][1:]
+        self.log.setLevel(logging.DEBUG)
+        #print(info, file=sys.__stderr__)
+        #print(matches, file=sys.__stderr__)
+        #stream_content = {'name': 'stdout', 'text': info['complete_obj']}
+        #self.send_response(self.iopub_socket, 'stream', stream_content)
 
-        return {'matches': matches, 'cursor_start': start,
-             'cursor_end': end, 'metadata': dict(),
+        return {'matches': matches, 'cursor_start': info['start'],
+             'cursor_end': info['end'], 'metadata': dict(),
                 'status': 'ok'}
 
 if __name__ == '__main__':
