@@ -3,7 +3,7 @@ import logging
 import pprint
 
 
-__version__ = '0.1'
+__version__ = '0.2'
 
 
 import re
@@ -50,7 +50,6 @@ class Parser(object):
                  magic_suffixes):
         self.identifier_regex = identifier_regex
         self.func_call_regex = function_call_regex
-        self.path_regex = re.compile(r'([a-zA-Z/\.~].*\Z)')
         self.magic_prefixes = magic_prefixes
         self.magic_suffixes = magic_suffixes
         self._default_regex = r'[^\d\W]\w*'
@@ -69,7 +68,7 @@ class Parser(object):
 
         info = dict(code=code, start=start, end=end, pre=code[:start],
                     mid=code[start:end], post=code[end:], magic=dict(),
-                    complete_obj='', help_obj='')
+                    obj='', help_obj='')
 
         info['magic'] = self.parse_magic(code[:end])
 
@@ -116,12 +115,12 @@ class Parser(object):
         info['obj'] = obj
         info['full_obj'] = full_obj
 
-        path_obj = re.search(self.path_regex, line)
-        if path_obj:
-            info['path_obj'] = path_obj.group()
-        else:
-            info['path_obj'] = obj
+        info['start'] = info['end'] - len(obj)
+        info['pre'] = code[:info['start']],
+        info['mid'] = code[info['start']: info['end']]
+        info['post'] = code[info['end']:]
 
+        info['path_matches'] = self.get_path_matches(info)
         return info
 
     def parse_magic(self, code):
@@ -189,6 +188,58 @@ class Parser(object):
             info['code'] = ''
         return info
 
+    def get_path_matches(self, info):
+        """Get a list of matching paths.
+
+        There are 3 types of matches:
+        - start character and no quotes
+        - quote mark followed by start character
+        - single "word"
+        """
+        full_regex = r'([a-zA-Z/\.~][^\'"]*)\Z'
+        full_regex = r'[\'"]{0}|{0}'.format(full_regex)
+        single_regex = r'([a-zA-Z/\.~][^ ]*)\Z'
+
+        line = info['line']
+        obj = info['obj']
+
+        full_path = re.search(full_regex, line)
+        single_path = re.search(single_regex, line)
+
+        if full_path:
+            full_path = full_path.group()
+
+        if single_path:
+            single_path = single_path.group()
+
+        matches = []
+
+        if full_path:
+            matches = _complete_path(full_path)
+
+            if len(full_path) > len(obj) and ' ' in full_path:
+                offset = len(full_path) - len(obj)
+                if not obj:
+                    offset -= 1
+                matches = [m[offset:] for m in matches]
+
+        if single_path:
+            matches += _complete_path(single_path)
+
+            if single_path.startswith('.'):
+                new = []
+                for m in matches:
+                    if m.startswith('.'):
+                        new.append(m[1:])
+                    else:
+                        new.append(m)
+                matches = new
+
+        if line.endswith('/'):
+            matches = ['/' + m for m in matches]
+
+        return list(set(matches))
+
 
 class TestKernel(Kernel):
     implementation = 'test_kernel'
@@ -204,10 +255,11 @@ class TestKernel(Kernel):
         function_call_regex = r'([^\d\W][\w\.]*)\([^\)\()]*\Z'
         magic_prefixes = dict(magic='%', shell='!', help='?')
         magic_suffixes = dict(help='?')
-        self.parser = Parser(identifier_regex, function_call_regex, magic_prefixes, magic_suffixes)
+        self.parser = Parser(identifier_regex, function_call_regex,
+                             magic_prefixes, magic_suffixes)
 
-    def do_execute(self, code, silent, store_history=True, user_expressions=None,
-                   allow_stdin=False):
+    def do_execute(self, code, silent, store_history=True,
+                   user_expressions=None, allow_stdin=False):
         if not code.strip():
             return {'status': 'ok', 'execution_count': self.execution_count,
                     'payload': [], 'user_expressions': {}}
@@ -218,29 +270,19 @@ class TestKernel(Kernel):
             stream_content = {'name': 'stdout', 'text': output}
             self.send_response(self.iopub_socket, 'stream', stream_content)
 
-
         return {'status': 'ok', 'execution_count': self.execution_count,
                 'payload': [], 'user_expressions': {}}
 
     def do_complete(self, code, cursor_pos):
 
-        # TODO: do something here
         info = self.parser.parse_code(code)
-        #matches = _complete_path(info['complete_obj'])
-        matches = _complete_path(info['path_obj'])
-        if matches:
-            while not matches[0].startswith(info['mid']):
-                info['start'] += 1
-                info['pre'] += info['mid'][0]
-                info['mid'] = info['mid'][1:]
+
         self.log.setLevel(logging.DEBUG)
-        #print(info, file=sys.__stderr__)
-        #print(matches, file=sys.__stderr__)
-        #stream_content = {'name': 'stdout', 'text': info['complete_obj']}
-        #self.send_response(self.iopub_socket, 'stream', stream_content)
+
+        matches = info['path_matches']
 
         return {'matches': matches, 'cursor_start': info['start'],
-             'cursor_end': info['end'], 'metadata': dict(),
+                'cursor_end': info['end'], 'metadata': dict(),
                 'status': 'ok'}
 
 if __name__ == '__main__':
