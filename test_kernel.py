@@ -48,11 +48,11 @@ class Parser(object):
 
     def __init__(self, identifier_regex, function_call_regex, magic_prefixes,
                  magic_suffixes):
-        self.identifier_regex = identifier_regex
-        self.func_call_regex = function_call_regex
+        self.identifier_regex = identifier_regex + '\Z'
+        self.func_call_regex = function_call_regex + '\Z'
         self.magic_prefixes = magic_prefixes
         self.magic_suffixes = magic_suffixes
-        self._default_regex = r'[^\d\W]\w*'
+        self._default_regex = r'[^\d\W]\w*\Z'
 
     def parse_code(self, code, start=0, end=-1):
 
@@ -72,14 +72,9 @@ class Parser(object):
 
         info['magic'] = self.parse_magic(code[:end])
 
-        id_regex = re.compile('(\{0}+{1}|{2})'.format(
+        id_regex = re.compile('(\{0}+{1}|{2}|\Z)'.format(
             self.magic_prefixes['magic'], self._default_regex,
             self.identifier_regex), re.UNICODE)
-
-        tokens = re.split(id_regex, code[:end], re.UNICODE)
-
-        if not tokens:
-            return info
 
         info['lines'] = lines = code[start:end].splitlines()
         info['line_num'] = line_num = len(lines)
@@ -87,11 +82,7 @@ class Parser(object):
         info['line'] = line = lines[-1]
         info['column'] = col = len(lines[-1])
 
-        tokens = re.findall(id_regex, line)
-        if tokens and line.endswith(tokens[-1]):
-            obj = tokens[-1]
-        else:
-            obj = ''
+        obj = re.search(id_regex, line).group()
 
         full_obj = obj
 
@@ -248,7 +239,7 @@ class TestKernel(Kernel):
         Kernel.__init__(self, **kwargs)
         self.log.setLevel(logging.INFO)
         identifier_regex = r'[^\d\W]\w*'
-        function_call_regex = r'([^\d\W][\w\.]*)\([^\)\()]*\Z'
+        function_call_regex = r'([^\d\W][\w\.]*)\([^\)\()]*'
         magic_prefixes = dict(magic='%', shell='!', help='?')
         magic_suffixes = dict(help='?')
         self.parser = Parser(identifier_regex, function_call_regex,
@@ -260,7 +251,7 @@ class TestKernel(Kernel):
             return {'status': 'ok', 'execution_count': self.execution_count,
                     'payload': [], 'user_expressions': {}}
 
-        output = pprint.pformat(self.parser.parse_code(code))
+        output = pprint.pformat(self.parser.parse_code(code.strip()))
 
         if not silent:
             stream_content = {'name': 'stdout', 'text': output}
@@ -273,7 +264,7 @@ class TestKernel(Kernel):
 
         info = self.parser.parse_code(code)
 
-        self.log.setLevel(logging.DEBUG)
+        # TODO: add jedi parsing here
 
         matches = info['path_matches']
 
