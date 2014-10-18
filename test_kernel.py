@@ -56,9 +56,6 @@ class Parser(object):
 
     def parse_code(self, code, start=0, end=-1):
 
-        if not code:
-            return
-
         if end == -1:
             end = len(code)
         end = min(len(code), end)
@@ -66,9 +63,7 @@ class Parser(object):
         start = min(start, end)
         start = max(0, start)
 
-        info = dict(code=code, start=start, end=end, pre=code[:start],
-                    mid=code[start:end], post=code[end:], magic=dict(),
-                    obj='', help_obj='')
+        info = dict(code=code, magic=dict())
 
         info['magic'] = self.parse_magic(code[:end])
 
@@ -106,10 +101,11 @@ class Parser(object):
         info['obj'] = obj
         info['full_obj'] = full_obj
 
-        info['start'] = info['end'] - len(obj)
-        info['pre'] = code[:info['start']],
-        info['mid'] = code[info['start']: info['end']]
-        info['post'] = code[info['end']:]
+        info['start'] = end - len(obj)
+        info['end'] = end
+        info['pre'] = code[:start]
+        info['mid'] = code[start: end]
+        info['post'] = code[end:]
 
         info['path_matches'] = self.get_path_matches(info)
         return info
