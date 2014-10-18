@@ -48,11 +48,11 @@ class Parser(object):
 
     def __init__(self, identifier_regex, function_call_regex, magic_prefixes,
                  magic_suffixes):
-        self.identifier_regex = identifier_regex + '\Z'
+        self.identifier_regex = identifier_regex
         self.func_call_regex = function_call_regex + '\Z'
         self.magic_prefixes = magic_prefixes
         self.magic_suffixes = magic_suffixes
-        self._default_regex = r'[^\d\W]\w*\Z'
+        self._default_regex = r'[^\d\W]\w*'
 
     def parse_code(self, code, start=0, end=-1):
 
@@ -67,7 +67,7 @@ class Parser(object):
 
         info['magic'] = self.parse_magic(code[:end])
 
-        id_regex = re.compile('(\{0}+{1}|{2}|\Z)'.format(
+        id_regex = re.compile('(\{0}+{1}\Z|{2}\Z|\Z)'.format(
             self.magic_prefixes['magic'], self._default_regex,
             self.identifier_regex), re.UNICODE)
 
@@ -88,9 +88,9 @@ class Parser(object):
             if match:
                 full_obj = obj + match.group()
 
-        func_call = re.findall(self.func_call_regex, line)
+        func_call = re.search(self.func_call_regex, line)
         if func_call and not obj:
-            info['help_obj'] = func_call[-1]
+            info['help_obj'] = func_call.groups()[0]
             info['help_col'] = line.index(obj) + len(obj)
             info['help_pos'] = end - len(line) + col
         else:

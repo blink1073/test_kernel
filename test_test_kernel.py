@@ -48,7 +48,7 @@ def test_path_completions():
         assert 'bin/' in p.parse_code(code)['path_matches']
     code = '~/.bashr'
     assert '.bashrc' in p.parse_code(code)['path_matches']
-    print(p.parse_code('.')['path_matches'])
+
     for f in os.listdir('.'):
         if os.path.isdir(f):
             if f.startswith('.'):
