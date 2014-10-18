@@ -206,16 +206,11 @@ class Parser(object):
         full_path = re.search(full_regex, line)
         single_path = re.search(single_regex, line)
 
-        if full_path:
-            full_path = full_path.group()
-
-        if single_path:
-            single_path = single_path.group()
-
         matches = []
 
         if full_path:
-            matches = _complete_path(full_path)
+            full_path = full_path.group()
+            matches += _complete_path(full_path)
 
             if len(full_path) > len(obj) and ' ' in full_path:
                 offset = len(full_path) - len(obj)
@@ -224,6 +219,7 @@ class Parser(object):
                 matches = [m[offset:] for m in matches]
 
         if single_path:
+            single_path = single_path.group()
             matches += _complete_path(single_path)
 
             if single_path.startswith('.'):
