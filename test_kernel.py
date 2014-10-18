@@ -47,13 +47,12 @@ def _complete_path(path=None):
 class Parser(object):
 
     def __init__(self, identifier_regex, function_call_regex, magic_prefixes,
-                 magic_suffixes, log):
+                 magic_suffixes):
         self.identifier_regex = identifier_regex
         self.func_call_regex = function_call_regex
         self.magic_prefixes = magic_prefixes
         self.magic_suffixes = magic_suffixes
         self._default_regex = r'[^\d\W]\w*'
-        self.log = log
 
     def parse_code(self, code, start=0, end=-1):
 
@@ -93,11 +92,6 @@ class Parser(object):
             obj = tokens[-1]
         else:
             obj = ''
-
-        # see if the object should start with '.'
-        if obj and len(line) > len(obj):
-            if line[info['end'] - len(obj) - 1] == '.':
-                obj = '.' + obj
 
         full_obj = obj
 
@@ -228,6 +222,15 @@ class Parser(object):
             single_path = single_path.group()
             matches += _complete_path(single_path)
 
+            if single_path.startswith('.'):
+                new = []
+                for m in matches:
+                    if m.startswith('.'):
+                        new.append(m[1:])
+                    else:
+                        new.append(m)
+                matches = new
+
         if line.endswith('/'):
             matches = ['/' + m for m in matches]
 
@@ -249,7 +252,7 @@ class TestKernel(Kernel):
         magic_prefixes = dict(magic='%', shell='!', help='?')
         magic_suffixes = dict(help='?')
         self.parser = Parser(identifier_regex, function_call_regex,
-                             magic_prefixes, magic_suffixes, self.log)
+                             magic_prefixes, magic_suffixes)
 
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=False):
