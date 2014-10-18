@@ -94,6 +94,11 @@ class Parser(object):
         else:
             obj = ''
 
+        # see if the object should start with '.'
+        if obj and len(line) > len(obj):
+            if line[info['end'] - len(obj) - 1] == '.':
+                obj = '.' + obj
+
         full_obj = obj
 
         if obj:
@@ -112,11 +117,6 @@ class Parser(object):
             info['help_obj'] = full_obj
             info['help_col'] = col
             info['help_pos'] = end
-
-        # see if the object should start with '.'
-        if obj and len(line) > len(obj):
-            if line[info['end'] - len(obj) - 1] == '.':
-                obj = '.' + obj
 
         info['obj'] = obj
         info['full_obj'] = full_obj
