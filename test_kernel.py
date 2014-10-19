@@ -185,41 +185,35 @@ class Parser(object):
         """
         full_regex = r'([a-zA-Z/\.~][^\'"]*)\Z'
         full_regex = r'[\'"]{0}|{0}'.format(full_regex)
-        single_regex = r'([a-zA-Z/\.~][^ ]*)\Z'
+        single_regex = r'([a-zA-Z/\.~][^ ]*)\z'
+        single_regex = r'[\'"]{0}|{0}'.format(single_regex)
 
         line = info['line']
-        obj = info['obj']
 
-        full_path = re.search(full_regex, line)
-        single_path = re.search(single_regex, line)
+        def get_path_matches(regex, line):
+            matches = []
+            path = re.findall(regex, line)
+            if path:
+                path = ''.join(path[0])
+                if os.path.isdir(path) and not path.endswith(os.sep) and not path == '.':
+                    return []
 
-        matches = []
+                paths = _complete_path(path)
+                if path.startswith(('.', '/')) and len(path) > 1:
+                    for p in paths:
+                        if p.startswith(path[0]):
+                            matches.append(p[1:])
+                        else:
+                            matches.append(p)
+                else:
+                    matches = paths
+                if path.endswith('/'):
+                    matches = ['/' + m for m in matches]
 
-        if full_path:
-            full_path = full_path.group()
-            matches += _complete_path(full_path)
+            return matches
 
-            if len(full_path) > len(obj) and ' ' in full_path:
-                offset = len(full_path) - len(obj)
-                if not obj:
-                    offset -= 1
-                matches = [m[offset:] for m in matches]
-
-        if single_path:
-            single_path = single_path.group()
-            matches += _complete_path(single_path)
-
-            if single_path.startswith('.'):
-                new = []
-                for m in matches:
-                    if m.startswith('.'):
-                        new.append(m[1:])
-                    else:
-                        new.append(m)
-                matches = new
-
-        if line.endswith('/'):
-            matches = ['/' + m for m in matches]
+        matches = get_path_matches(full_regex, line)
+        matches += get_path_matches(single_regex, line)
 
         return list(set(matches))
 
