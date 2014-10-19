@@ -266,7 +266,8 @@ class TestKernel(Kernel):
 
         text = info['code'][:info['end']]
         interpreter = Interpreter(text, [self.env])
-        path = UserContext(text, (1, len(text))).get_path_until_cursor()
+        position = (info['line_num'], info['column'])
+        path = UserContext(text, position).get_path_until_cursor()
         path, dot, like = completion_parts(path)
         before = text[:len(text) - len(like)]
 
@@ -284,7 +285,6 @@ class TestKernel(Kernel):
 
         if jedi:
             matches += self.get_jedi_completions(info)
-        # TODO: second line starts an import
 
         return {'matches': matches, 'cursor_start': info['start'],
                 'cursor_end': info['end'], 'metadata': dict(),
