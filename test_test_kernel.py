@@ -115,3 +115,9 @@ def test_complete7():
     p = get_parser()
     info = p.parse_code('/tmp/Test Dir/test.txt')
     assert not info['path_matches'], info
+
+
+def test_complete8():
+    p = get_parser()
+    info = p.parse_code('/tmp/Test Dir/', 0, 9)
+    assert 'Test Dir/' in info['path_matches'], info
