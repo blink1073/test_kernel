@@ -8,6 +8,14 @@ __version__ = '0.3'
 
 import re
 import os
+try:
+    import jedi
+except ImportError:
+    jedi = None
+else:
+    from jedi import Interpreter
+    from jedi.api.helpers import completion_parts
+    from jedi.parser.user_context import UserContext
 
 
 def _listdir(root):
@@ -231,6 +239,9 @@ class TestKernel(Kernel):
         magic_suffixes = dict(help='?')
         self.parser = Parser(identifier_regex, function_call_regex,
                              magic_prefixes, magic_suffixes)
+        self.env = globals()['__builtins__']
+        if not isinstance(self.env, dict):
+            self.env = self.env.__dict__
 
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=False):
@@ -247,13 +258,33 @@ class TestKernel(Kernel):
         return {'status': 'ok', 'execution_count': self.execution_count,
                 'payload': [], 'user_expressions': {}}
 
+    def get_jedi_completions(self, info):
+        '''Get Python completions'''
+        # https://github.com/davidhalter/jedi/blob/master/jedi/utils.py
+        if jedi is None:
+            return []
+
+        text = info['code'][:info['end']]
+        interpreter = Interpreter(text, [self.env])
+        path = UserContext(text, (1, len(text))).get_path_until_cursor()
+        path, dot, like = completion_parts(path)
+        before = text[:len(text) - len(like)]
+
+        completions = interpreter.completions()
+
+        completions = [before + c.name_with_symbols for c in completions]
+
+        return [c[info['start']:] for c in completions]
+
     def do_complete(self, code, cursor_pos):
 
         info = self.parser.parse_code(code, 0, cursor_pos)
 
-        # TODO: add jedi parsing here
-
         matches = info['path_matches']
+
+        if jedi:
+            matches += self.get_jedi_completions(info)
+        # TODO: second line starts an import
 
         return {'matches': matches, 'cursor_start': info['start'],
                 'cursor_end': info['end'], 'metadata': dict(),
