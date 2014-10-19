@@ -239,9 +239,6 @@ class TestKernel(Kernel):
         magic_suffixes = dict(help='?')
         self.parser = Parser(identifier_regex, function_call_regex,
                              magic_prefixes, magic_suffixes)
-        self.env = globals()['__builtins__']
-        if not isinstance(self.env, dict):
-            self.env = self.env.__dict__
 
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=False):
@@ -258,14 +255,12 @@ class TestKernel(Kernel):
         return {'status': 'ok', 'execution_count': self.execution_count,
                 'payload': [], 'user_expressions': {}}
 
-    def get_jedi_completions(self, info):
+    def get_jedi_completions(self, info, env=None):
         '''Get Python completions'''
         # https://github.com/davidhalter/jedi/blob/master/jedi/utils.py
-        if jedi is None:
-            return []
-
         text = info['code'][:info['end']]
-        interpreter = Interpreter(text, [self.env])
+        env = env or {}
+        interpreter = Interpreter(text, [env])
         position = (info['line_num'], info['column'])
         path = UserContext(text, position).get_path_until_cursor()
         path, dot, like = completion_parts(path)
