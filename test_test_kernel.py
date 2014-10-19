@@ -47,13 +47,14 @@ def test_path_completions():
         code = '/usr/bi'
         assert 'bin/' in p.parse_code(code)['path_matches']
     code = '~/.bashr'
-    assert '.bashrc' in p.parse_code(code)['path_matches']
+    assert 'bashrc' in p.parse_code(code)['path_matches']
 
     for f in os.listdir('.'):
-        if os.path.isdir(f):
-            assert f + os.sep in p.parse_code('.')['path_matches'], f
-        else:
-            assert f in p.parse_code('.')['path_matches']
+        if f.startswith('.'):
+            if os.path.isdir(f):
+                assert f[1:] + os.sep in p.parse_code('.')['path_matches'], f
+            else:
+                assert f[1:] in p.parse_code('.')['path_matches']
 
 
 def test_complete0():
@@ -83,20 +84,19 @@ def test_complete1():
 def test_complete2():
     p = get_parser()
     info = p.parse_code('open("/tmp/')
-    ## What should we test here? Note open quotes
     assert "/Test Dir/" in info['path_matches'], info
 
 
 def test_complete3():
     p = get_parser()
-    info = p.parse_code('/tmp/test3.txt', 0, 7)
-    assert "test3.txt" in info['path_matches'], info
+    info = p.parse_code('/tmp/Test Dir/temp.txt', 0, 14)
+    assert "/test.txt" in info['path_matches'], info
 
 
 def test_complete4():
     p = get_parser()
     info = p.parse_code('/tmp/Test Dir')
-    assert not info['path_matches'], info
+    assert 'Dir/test.txt' in info['path_matches'], info
 
 
 def test_complete5():
@@ -113,4 +113,5 @@ def test_complete6():
 
 def test_complete7():
     p = get_parser()
-    pass
+    info = p.parse_code('/tmp/Test Dir/test.txt')
+    assert not info['path_matches'], info

@@ -3,7 +3,7 @@ import logging
 import pprint
 
 
-__version__ = '0.2'
+__version__ = '0.3'
 
 
 import re
@@ -33,13 +33,14 @@ def _complete_path(path=None):
         return _listdir('.')
     dirname, rest = os.path.split(path)
     tmp = dirname if dirname else '.'
-    res = [p for p in _listdir(tmp) if p.startswith(rest)]
+    res = [os.path.join(dirname, p) for p in _listdir(tmp)
+           if p.startswith(rest)]
     # more than one match, or single match which does not exist (typo)
     if len(res) > 1 or not os.path.exists(path):
         return res
     # resolved to a single directory, so return list of files below it
     if os.path.isdir(path):
-        return [p for p in _listdir(path)]
+        return [os.path.join(path, p) for p in _listdir(path)]
     # exact file match terminates this completion
     return [path + ' ']
 
@@ -189,31 +190,25 @@ class Parser(object):
         single_regex = r'[\'"]{0}|{0}'.format(single_regex)
 
         line = info['line']
+        obj = info['obj']
 
-        def get_path_matches(regex, line):
+        def get_regex_matches(regex):
             matches = []
             path = re.findall(regex, line)
             if path:
                 path = ''.join(path[0])
-                if os.path.isdir(path) and not path.endswith(os.sep) and not path == '.':
-                    return []
-
-                paths = _complete_path(path)
-                if path.startswith(('.', '/')) and len(path) > 1:
-                    for p in paths:
-                        if p.startswith(path[0]):
-                            matches.append(p[1:])
-                        else:
-                            matches.append(p)
-                else:
-                    matches = paths
+                matches = _complete_path(path)
+                if len(path) > len(obj) and not path == '.':
+                    matches = [m[len(path) - len(obj):] for m in matches]
+                elif path == '.':
+                    matches = [m[1:] for m in matches if m.startswith('.')]
+                # TODO: remove this after QtConsole is patched
                 if path.endswith('/'):
                     matches = ['/' + m for m in matches]
+            return [m.strip() for m in matches if not m.strip() == obj]
 
-            return matches
-
-        matches = get_path_matches(full_regex, line)
-        matches += get_path_matches(single_regex, line)
+        matches = get_regex_matches(full_regex)
+        matches += get_regex_matches(single_regex)
 
         return list(set(matches))
 
