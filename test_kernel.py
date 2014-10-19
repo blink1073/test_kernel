@@ -49,11 +49,24 @@ class Parser(object):
 
     def __init__(self, identifier_regex, function_call_regex, magic_prefixes,
                  magic_suffixes):
-        self.identifier_regex = identifier_regex
-        self.func_call_regex = function_call_regex + '\Z'
+        self.func_call_regex = re.compile(function_call_regex + '\Z',
+                                          re.UNICODE)
+        default_regex = r'[^\d\W]\w*'
+        self.id_regex = re.compile(r'(\{0}+{1}\Z|{2}\Z|\Z)'.format(
+            magic_prefixes['magic'], default_regex,
+            identifier_regex), re.UNICODE)
+
+        self.magic_regex = '|'.join([default_regex, identifier_regex])
+
+        full_path_regex = r'([a-zA-Z/\.~][^\'"]*)\Z'
+        self.full_path_regex = re.compile(r'[\'"]{0}|{0}'.format(
+            full_path_regex), re.UNICODE)
+        single_path_regex = r'([a-zA-Z/\.~][^ ]*)\z'
+        self.single_path_regex = re.compile(r'[\'"]{0}|{0}'.format(
+            single_path_regex), re.UNICODE)
+
         self.magic_prefixes = magic_prefixes
         self.magic_suffixes = magic_suffixes
-        self._default_regex = r'[^\d\W]\w*'
 
     def parse_code(self, code, start=0, end=-1):
 
@@ -68,24 +81,20 @@ class Parser(object):
 
         info['magic'] = self.parse_magic(code[:end])
 
-        id_regex = re.compile('(\{0}+{1}\Z|{2}\Z|\Z)'.format(
-            self.magic_prefixes['magic'], self._default_regex,
-            self.identifier_regex), re.UNICODE)
-
         info['lines'] = lines = code[start:end].splitlines()
         info['line_num'] = line_num = len(lines)
 
         info['line'] = line = lines[-1]
         info['column'] = col = len(lines[-1])
 
-        obj = re.search(id_regex, line).group()
+        obj = re.search(self.id_regex, line).group()
 
         full_obj = obj
 
         if obj:
             full_line = code.splitlines()[line_num - 1]
             rest = full_line[col:]
-            match = re.match(id_regex, rest)
+            match = re.match(self.id_regex, rest)
             if match:
                 full_obj = obj + match.group()
 
@@ -117,21 +126,19 @@ class Parser(object):
         prefixes = self.magic_prefixes
         suffixes = self.magic_suffixes
 
-        id_regex = '|'.join([self._default_regex, self.identifier_regex])
-
         pre_magics = {}
         for (name, prefix) in prefixes.items():
             if name == 'shell':
-                regex = r'(\%s+)( *)(%s)' % (prefix, id_regex)
+                regex = r'(\%s+)( *)(%s)' % (prefix, self.magic_regex)
             else:
-                regex = r'(\%s+)(%s)' % (prefix, id_regex)
+                regex = r'(\%s+)(%s)' % (prefix, self.magic_regex)
             match = re.search(regex, code, re.UNICODE)
             if match:
                 pre_magics[name] = match.groups()
 
         post_magics = {}
         for (name, suffix) in suffixes.items():
-            regex = r'(%s)(\%s+)' % (id_regex, suffix)
+            regex = r'(%s)(\%s+)' % (self.magic_regex, suffix)
             match = re.search(regex, code, re.UNICODE)
             if match:
                 post_magics[name] = match.groups()
@@ -184,11 +191,6 @@ class Parser(object):
         - quote mark followed by start character
         - single "word"
         """
-        full_regex = r'([a-zA-Z/\.~][^\'"]*)\Z'
-        full_regex = r'[\'"]{0}|{0}'.format(full_regex)
-        single_regex = r'([a-zA-Z/\.~][^ ]*)\z'
-        single_regex = r'[\'"]{0}|{0}'.format(single_regex)
-
         line = info['line']
         obj = info['obj']
 
@@ -207,8 +209,8 @@ class Parser(object):
                     matches = ['/' + m for m in matches]
             return [m.strip() for m in matches if not m.strip() == obj]
 
-        matches = get_regex_matches(full_regex)
-        matches += get_regex_matches(single_regex)
+        matches = get_regex_matches(self.full_path_regex)
+        matches += get_regex_matches(self.single_path_regex)
 
         return list(set(matches))
 
