@@ -70,8 +70,7 @@ class Parser(object):
         self.full_path_regex = re.compile(r'[\'"]{0}|{0}'.format(
             full_path_regex), re.UNICODE)
         single_path_regex = r'([a-zA-Z/\.~][^ ]*)\z'
-        self.single_path_regex = re.compile(r'[\'"]{0}|{0}'.format(
-            single_path_regex), re.UNICODE)
+        self.single_path_regex = re.compile(single_path_regex, re.UNICODE)
 
         self.magic_prefixes = magic_prefixes
         self.magic_suffixes = magic_suffixes
