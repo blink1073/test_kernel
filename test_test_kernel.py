@@ -53,8 +53,73 @@ def test_path_completions():
         if os.path.isdir(f):
             if f.startswith('.'):
                 f = f[1:]
-            assert f + os.sep in p.parse_code('.')['path_matches']
+            assert f + os.sep in p.parse_code('.')['path_matches'], p.parse_code('.')['path_matches']
         else:
             if f.startswith('.'):
                 f = f[1:]
             assert f in p.parse_code('.')['path_matches']
+
+def test_complete0():
+    p = Parser(IDENTIFIER_REGEX, FUNC_CALL_REGEX, MAGIC_PREFIXES,
+               MAGIC_SUFFIXES)
+    info = p.parse_code('abcdefghijklmnop', 0, 4)
+    assert info['obj'] == 'abcd', info
+
+def test_complete1():
+    p = Parser(IDENTIFIER_REGEX, FUNC_CALL_REGEX, MAGIC_PREFIXES,
+               MAGIC_SUFFIXES)
+    try:
+        os.mkdir("/tmp/Test Dir")
+    except OSError:
+        pass # dir exists
+    info = p.parse_code('/tmp/')
+    assert "/Test Dir/" in info['path_matches'], info['path_matches']
+
+def test_complete2():
+    p = Parser(IDENTIFIER_REGEX, FUNC_CALL_REGEX, MAGIC_PREFIXES,
+               MAGIC_SUFFIXES)
+    info = p.parse_code('open("/tmp/')
+    ## What should we test here? Note open quotes
+    assert "XXX" in info['path_matches'], info
+
+def test_complete3():
+    p = Parser(IDENTIFIER_REGEX, FUNC_CALL_REGEX, MAGIC_PREFIXES,
+               MAGIC_SUFFIXES)
+    open("/tmp/test3.txt", "w").close()
+    info = p.parse_code('/tmp/test3.txt', 0, 7)
+    ## What should we test here? Note tab is in middle of filename
+    assert "XXX" in info['path_matches'], info
+
+def test_complete4():
+    p = Parser(IDENTIFIER_REGEX, FUNC_CALL_REGEX, MAGIC_PREFIXES,
+               MAGIC_SUFFIXES)
+    try:
+        os.mkdir("/tmp/Test Dir")
+    except OSError:
+        pass # dir exists
+    open("/tmp/Test Dir/test.txt", "w").close()
+    info = p.parse_code('/tmp/Test Dir')
+    assert "test.txt" in info['path_matches'], info['path_matches']
+
+def test_complete5():
+    p = Parser(IDENTIFIER_REGEX, FUNC_CALL_REGEX, MAGIC_PREFIXES,
+               MAGIC_SUFFIXES)
+    try:
+        os.mkdir("/tmp/Test Dir")
+    except OSError:
+        pass # dir exists
+    open("/tmp/Test Dir/test.txt", "w").close()
+    info = p.parse_code('/tmp/Test Dir/')
+    assert "test.txt" in info['path_matches'], info['path_matches']
+
+def test_complete6():
+    p = Parser(IDENTIFIER_REGEX, FUNC_CALL_REGEX, MAGIC_PREFIXES,
+               MAGIC_SUFFIXES)
+    try:
+        os.mkdir("/tmp/Test Dir")
+    except OSError:
+        pass # dir exists
+    open("/tmp/Test Dir/test.txt", "w").close()
+    info = p.parse_code('/tmp/Test')
+    assert "Test Dir/" in info['path_matches'], info['path_matches']
+
