@@ -249,7 +249,7 @@ class TestKernel(Kernel):
 
     def do_complete(self, code, cursor_pos):
 
-        info = self.parser.parse_code(code)
+        info = self.parser.parse_code(code, 0, cursor_pos)
 
         # TODO: add jedi parsing here
 
